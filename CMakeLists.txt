@@ -680,6 +680,7 @@ message(STATUS "SEAL_BUILD_EXAMPLES: ${SEAL_BUILD_EXAMPLES}")
 
 if(SEAL_BUILD_EXAMPLES)
     add_subdirectory(native/examples)
+    add_subdirectory(native/capstone)
 endif()
 
 ##################
