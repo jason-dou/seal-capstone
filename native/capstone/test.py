@@ -3,7 +3,8 @@ from sklearn.linear_model import LinearRegression
 
 age = []
 income = []
-n = 2000
+n = 15
+factor = 10000
 with open("/afs/andrew.cmu.edu/usr24/jiachend/public/cleaned_small_user_data.csv") as f:
     line = f.readline()
     count = 0
@@ -13,7 +14,7 @@ with open("/afs/andrew.cmu.edu/usr24/jiachend/public/cleaned_small_user_data.csv
             break
         line = line.split(',')
         age.append(eval(line[2]))
-        income.append(eval(line[3]))
+        income.append(eval(line[3])/factor)
         count += 1
 
 n = len(age)
@@ -36,7 +37,7 @@ b = b1 - b2
 
 div1 = n * sig_x2
 div2 = sig_x * sig_x
-div = div1 - div2 
+div = div1 - div2
 
 print("sigy: ", sig_y)
 print("sigx2: ", sig_x2)

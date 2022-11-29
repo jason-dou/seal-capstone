@@ -2,12 +2,13 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include "examples.h"
 
 using namespace std;
 using namespace seal;
 
-#define MAX_ENTRY 2000
-#define INC_FACTOR 1000
+#define MAX_ENTRY 15
+#define INC_FACTOR 10000
 
 const char *file_small = "/afs/andrew.cmu.edu/usr24/jiachend/public/cleaned_small_user_data.csv";
 
@@ -80,14 +81,6 @@ void readFile(const char *filename, data_t *data)
     myfile.close();
 }
 
-/*
-Helper function: Convert a value into a hexadecimal string, e.g., uint64_t(17) --> "11".
-*/
-string uint64_to_hex_string(std::uint64_t value)
-{
-    return seal::util::uint_to_hex_string(&value, std::size_t(1));
-}
-
 int main()
 {
     data_t *data = new data_t;
@@ -95,21 +88,24 @@ int main()
 
     std::cout << "DATA SIZE: " << data->size << std::endl;
 
-    vector<int64_t> age = data->age;
-    vector<int64_t> income = data->income;
+    auto age = data->age;
+    auto income = data->income;
+    auto size = data->size;
+
     string line, word;
     int k = 0;
 
     cout << "Setting up context" << endl;
     // set up context
     EncryptionParameters parms(scheme_type::bfv);
-    size_t poly_modulus_degree = 16384;
+    size_t poly_modulus_degree = 8192;
     parms.set_poly_modulus_degree(poly_modulus_degree);
-    parms.set_coeff_modulus(CoeffModulus::Create(poly_modulus_degree, { 60, 40, 40, 60 }));
-    parms.set_plain_modulus(PlainModulus::Batching(poly_modulus_degree, 20));
+    parms.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
+    parms.set_plain_modulus(786433);
     SEALContext context(parms);
     BatchEncoder batch_encoder(context);
-
+    print_parameters(context);
+    cout << endl;
     // generate keys
     KeyGenerator keygen(context);
     SecretKey secret_key = keygen.secret_key();
@@ -134,6 +130,27 @@ int main()
     batch_encoder.encode(income, y_plain);
     encryptor.encrypt(y_plain, y_cipher);
 
+    Plaintext y_cipher_plain;
+    vector<int64_t> x_plain_result;
+    vector<int64_t> y_plain_result;
+    decryptor.decrypt(y_cipher, y_cipher_plain);
+    batch_encoder.decode(x_plain, x_plain_result);
+    batch_encoder.decode(y_cipher_plain, y_plain_result);
+
+    // Debug print statement
+    // cout << "x_plain: ";
+    // for (auto i = 0; i < 10; ++i)
+    // {
+    //     cout << x_plain_result[i] << " ";
+    // }
+    // cout << endl;
+    // cout << "y_plain: ";
+    // for (auto i = 0; i < 10; ++i)
+    // {
+    //     cout << y_plain_result[i] << " ";
+    // }
+    // cout << endl;
+
     // TODO: Calculate Coefficients a and b. Need to figure out how to sum up encrypted vector in SEAL.
     cout << "Compute x^2 and relinearize:" << endl;
     Ciphertext x_square;
@@ -145,15 +162,37 @@ int main()
     evaluator.multiply(x_cipher, y_cipher, xy_cipher);
     evaluator.relinearize_inplace(xy_cipher, relin_keys);
 
+    Plaintext x_square_plain;
+    Plaintext xy_cipher_plain;
+    vector<int64_t> x_square_result;
+    vector<int64_t> xy_cipher_result;
+    decryptor.decrypt(x_square, x_square_plain);
+    decryptor.decrypt(xy_cipher, xy_cipher_plain);
+    batch_encoder.decode(x_square_plain, x_square_result);
+    batch_encoder.decode(xy_cipher_plain, xy_cipher_result);
+
+    // Debug print statement
+    // cout << "x_square_result: ";
+    // for (auto i = 0; i < 10; ++i)
+    // {
+    //     cout << x_square_result[i] << " ";
+    // }
+    // cout << endl;
+    // cout << "xy_cipher_result: ";
+    // for (auto i = 0; i < 10; ++i)
+    // {
+    //     cout << xy_cipher_result[i] << " ";
+    // }
+    // cout << endl;
+
     cout << "before rotating" << endl;
-    int data_size = age.size();
-    vector<Ciphertext> rotations_output_x(data_size);
-    vector<Ciphertext> rotations_output_y(data_size);
-    vector<Ciphertext> rotations_output_x2(data_size);
-    vector<Ciphertext> rotations_output_xy(data_size);
+    vector<Ciphertext> rotations_output_x(size);
+    vector<Ciphertext> rotations_output_y(size);
+    vector<Ciphertext> rotations_output_x2(size);
+    vector<Ciphertext> rotations_output_xy(size);
 
     cout << "rotate" << endl;
-    for (int steps = 0; steps < data_size; steps++)
+    for (int steps = 0; steps < size; steps++)
     {
         evaluator.rotate_rows(x_cipher, steps, galois_keys, rotations_output_x[steps]);
         evaluator.rotate_rows(y_cipher, steps, galois_keys, rotations_output_y[steps]);
@@ -168,11 +207,57 @@ int main()
     Ciphertext sum_output_y;
     evaluator.add_many(rotations_output_y, sum_output_y);
 
+    Plaintext sum_output_x_plain;
+    Plaintext sum_output_y_plain;
+    vector<int64_t> sum_output_x_result;
+    vector<int64_t> sum_output_y_result;
+    decryptor.decrypt(sum_output_x, sum_output_x_plain);
+    decryptor.decrypt(sum_output_y, sum_output_y_plain);
+    batch_encoder.decode(sum_output_x_plain, sum_output_x_result);
+    batch_encoder.decode(sum_output_y_plain, sum_output_y_result);
+
+    // Debug print statement
+    // cout << "sum_output_x_result: ";
+    // for (auto i = 0; i < 10; ++i)
+    // {
+    //     cout << sum_output_x_result[i] << " ";
+    // }
+    // cout << endl;
+    // cout << "sum_output_y_result: ";
+    // for (auto i = 0; i < 10; ++i)
+    // {
+    //     cout << sum_output_y_result[i] << " ";
+    // }
+    // cout << endl;
+
     Ciphertext sum_output_xy;
     evaluator.add_many(rotations_output_xy, sum_output_xy);
 
     Ciphertext sum_output_x2;
     evaluator.add_many(rotations_output_x2, sum_output_x2);
+
+    Plaintext sum_output_xy_plain;
+    Plaintext sum_output_x2_plain;
+    vector<int64_t> sum_output_xy_result;
+    vector<int64_t> sum_output_x2_result;
+    decryptor.decrypt(sum_output_xy, sum_output_xy_plain);
+    decryptor.decrypt(sum_output_x2, sum_output_x2_plain);
+    batch_encoder.decode(sum_output_xy_plain, sum_output_xy_result);
+    batch_encoder.decode(sum_output_x2_plain, sum_output_x2_result);
+
+    // Debug print statement
+    // cout << "sum_output_xy_result: ";
+    // for (auto i = 0; i < 10; ++i)
+    // {
+    //     cout << sum_output_xy_result[i] << " ";
+    // }
+    // cout << endl;
+    // cout << "sum_output_x2_result: ";
+    // for (auto i = 0; i < 10; ++i)
+    // {
+    //     cout << sum_output_x2_result[i] << " ";
+    // }
+    // cout << endl;
 
     Ciphertext sq_sum_output_x;
     evaluator.square(sum_output_x, sq_sum_output_x);
@@ -181,6 +266,29 @@ int main()
     parms_id_type last_parms_id = sum_output_x2.parms_id();
     evaluator.mod_switch_to_inplace(sum_output_y, last_parms_id);
     evaluator.mod_switch_to_inplace(sum_output_x, last_parms_id);
+
+    Plaintext sum_output_x_mod_plain;
+    Plaintext sum_output_y_mod_plain;
+    vector<int64_t> sum_output_x_mod_result;
+    vector<int64_t> sum_output_y_mod_result;
+    decryptor.decrypt(sum_output_x, sum_output_x_mod_plain);
+    decryptor.decrypt(sum_output_y, sum_output_y_mod_plain);
+    batch_encoder.decode(sum_output_x_mod_plain, sum_output_x_mod_result);
+    batch_encoder.decode(sum_output_y_mod_plain, sum_output_y_mod_result);
+
+    // Debug print statement
+    // cout << "sum_output_x_mod_result: ";
+    // for (auto i = 0; i < 10; ++i)
+    // {
+    //     cout << sum_output_x_mod_result[i] << " ";
+    // }
+    // cout << endl;
+    // cout << "sum_output_y_mod_result: ";
+    // for (auto i = 0; i < 10; ++i)
+    // {
+    //     cout << sum_output_y_mod_result[i] << " ";
+    // }
+    // cout << endl;
 
     cout << "multiply" << endl;
     Ciphertext mul_output_yx2;
@@ -195,44 +303,116 @@ int main()
     evaluator.multiply(sum_output_x, sum_output_y, mul_output_xy);
     evaluator.relinearize_inplace(mul_output_xy, relin_keys);
 
+    Plaintext mul_output_yx2_plain;
+    Plaintext mul_output_xxy_plain;
+    Plaintext mul_output_xy_plain;
+    vector<int64_t> mul_output_yx2_result;
+    vector<int64_t> mul_output_xxy_result;
+    vector<int64_t> mul_output_xy_result;
+    decryptor.decrypt(mul_output_yx2, mul_output_yx2_plain);
+    decryptor.decrypt(mul_output_xxy, mul_output_xxy_plain);
+    decryptor.decrypt(mul_output_xy, mul_output_xy_plain);
+    batch_encoder.decode(mul_output_yx2_plain, mul_output_yx2_result);
+    batch_encoder.decode(mul_output_xxy_plain, mul_output_xxy_result);
+    batch_encoder.decode(mul_output_xy_plain, mul_output_xy_result);
+
+    // Debug print statement
+    // cout << "mul_output_yx2_result: ";
+    // for (auto i = 0; i < 10; ++i)
+    // {
+    //     cout << mul_output_yx2_result[i] << " ";
+    // }
+    // cout << endl;
+    // cout << "mul_output_xxy_result: ";
+    // for (auto i = 0; i < 10; ++i)
+    // {
+    //     cout << mul_output_xxy_result[i] << " ";
+    // }
+    // cout << endl;
+    // cout << "mul_output_xy_result: ";
+    // for (auto i = 0; i < 10; ++i)
+    // {
+    //     cout << mul_output_xy_result[i] << " ";
+    // }
+    // cout << endl;
+
     Ciphertext len;
-    Plaintext plain_len(uint64_to_hex_string(data_size));
+    Plaintext plain_len(uint64_to_hex_string(size));
     encryptor.encrypt(plain_len, len);
 
-    Ciphertext mul_1;
-    evaluator.multiply(sum_output_x2, len, mul_1);
-    evaluator.relinearize_inplace(mul_1, relin_keys);
+    Ciphertext len_x2;
+    evaluator.multiply(sum_output_x2, len, len_x2);
+    evaluator.relinearize_inplace(len_x2, relin_keys);
 
-    Ciphertext mul_2;
-    evaluator.multiply(sum_output_xy, len, mul_2);
-    evaluator.relinearize_inplace(mul_2, relin_keys);
+    Ciphertext len_xy;
+    evaluator.multiply(sum_output_xy, len, len_xy);
+    evaluator.relinearize_inplace(len_xy, relin_keys);
 
-    Ciphertext res1;
-    Ciphertext res2;
-    Ciphertext res3;
-    parms_id_type last_parms_id_final = mul_1.parms_id();
+    Plaintext len_plain;
+    Plaintext len_x2_plain;
+    Plaintext len_xy_plain;
+    vector<int64_t> len_result;
+    vector<int64_t> len_x2_result;
+    vector<int64_t> len_xy_result;
+    decryptor.decrypt(len, len_plain);
+    decryptor.decrypt(len_x2, len_x2_plain);
+    decryptor.decrypt(len_xy, len_xy_plain);
+    batch_encoder.decode(len_plain, len_result);
+    batch_encoder.decode(len_x2_plain, len_x2_result);
+    batch_encoder.decode(len_xy_plain, len_xy_result);
+
+    // Debug print statement
+    // cout << "len_result: ";
+    // for (auto i = 0; i < 10; ++i)
+    // {
+    //     cout << len_result[i] << " ";
+    // }
+    // cout << endl;
+    // cout << "len_x2_result: ";
+    // for (auto i = 0; i < 10; ++i)
+    // {
+    //     cout << len_x2_result[i] << " ";
+    // }
+    // cout << endl;
+    // cout << "len_xy_result: ";
+    // for (auto i = 0; i < 10; ++i)
+    // {
+    //     cout << len_xy_result[i] << " ";
+    // }
+    // cout << endl;
+
+    Ciphertext a_top;
+    Ciphertext b_top;
+    Ciphertext bot;
+    parms_id_type last_parms_id_final = len_x2.parms_id();
     evaluator.mod_switch_to_inplace(sq_sum_output_x, last_parms_id_final);
 
     cout << "sub" << endl;
-    evaluator.sub(mul_output_yx2, mul_output_xxy, res1);
-    evaluator.sub(mul_2, mul_output_xy, res2);
-    evaluator.sub(mul_1, sq_sum_output_x, res3);
+    evaluator.sub(mul_output_yx2, mul_output_xxy, a_top);
+    evaluator.sub(len_xy, mul_output_xy, b_top);
+    evaluator.sub(len_x2, sq_sum_output_x, bot);
 
-    cout << "result" << endl;
-    Plaintext result1, result2, result3;
-    decryptor.decrypt(res1, result1);
-    decryptor.decrypt(res2, result2);
-    decryptor.decrypt(res3, result3);
+    Plaintext a_top_plain;
+    Plaintext b_top_plain;
+    Plaintext bot_plain;
+    vector<int64_t> a_top_result;
+    vector<int64_t> b_top_result;
+    vector<int64_t> bot_result;
+    decryptor.decrypt(a_top, a_top_plain);
+    decryptor.decrypt(b_top, b_top_plain);
+    decryptor.decrypt(bot, bot_plain);
+    batch_encoder.decode(a_top_plain, a_top_result);
+    batch_encoder.decode(b_top_plain, b_top_result);
+    batch_encoder.decode(bot_plain, bot_result);
 
-    vector<int64_t> finalresult1;
-    vector<int64_t> finalresult2;
-    vector<int64_t> finalresult3;
-    batch_encoder.decode(result1, finalresult1);
-    batch_encoder.decode(result2, finalresult2);
-    batch_encoder.decode(result3, finalresult3);
+    cout << "a_top_result: " << a_top_result[0] << endl;
+    cout << "b_top_result: " << b_top_result[0] << endl;
+    cout << "bot_result: " << bot_result[0] << endl;
 
-    cout << result1[0] << endl;
-    cout << result2[0] << endl;
-    cout << result3[0] << endl;
+    double intercept = (a_top_result[0] * 1.0) / (bot_result[0] * 1.0);
+    double coefficient = (b_top_result[0] * 1.0) / (bot_result[0] * 1.0);
+    cout << "intercept: " << intercept << endl;
+    cout << "coefficient: " << coefficient << endl;
+
     return 0;
 }
