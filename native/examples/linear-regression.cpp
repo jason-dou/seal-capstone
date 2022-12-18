@@ -7,10 +7,10 @@
 using namespace std;
 using namespace seal;
 
-#define MAX_ENTRY 15
-#define INC_FACTOR 10000
+#define MAX_ENTRY 4000
+#define INC_FACTOR 1000
 
-const char *file_small = "/afs/andrew.cmu.edu/usr24/jiachend/public/cleaned_small_user_data.csv";
+const char *file_small = "/afs/andrew.cmu.edu/usr24/jiachend/public/medium_dataset.csv";
 
 typedef struct
 {
@@ -71,10 +71,10 @@ void readFile(const char *filename, data_t *data)
     data->income.clear();
     while (line.size() == fields && data->size < MAX_ENTRY)
     {
-        data->id.push_back(std::stoi(line[0]));
-        data->name.push_back(line[1]);
-        data->age.push_back(std::stoi(line[2]));
-        data->income.push_back(std::stoi(line[3]) / INC_FACTOR);
+        // data->id.push_back(std::stoi(line[6]));
+        // data->name.push_back(line[7]);
+        data->age.push_back(std::stoi(line[8]));
+        data->income.push_back(std::stoi(line[9]) / INC_FACTOR);
         data->size++;
         line = getNextLine(myfile);
     }
@@ -95,13 +95,17 @@ int main()
     string line, word;
     int k = 0;
 
-    cout << "Setting up context" << endl;
+    chrono::high_resolution_clock::time_point time_start, time_end;
+
+    cout << "Setting up context. Start time" << endl;
+    time_start = chrono::high_resolution_clock::now();
+
     // set up context
     EncryptionParameters parms(scheme_type::bfv);
     size_t poly_modulus_degree = 8192;
     parms.set_poly_modulus_degree(poly_modulus_degree);
     parms.set_coeff_modulus(CoeffModulus::BFVDefault(poly_modulus_degree));
-    parms.set_plain_modulus(786433);
+    parms.set_plain_modulus(PlainModulus::Batching(poly_modulus_degree, 40));
     SEALContext context(parms);
     BatchEncoder batch_encoder(context);
     print_parameters(context);
@@ -138,18 +142,18 @@ int main()
     batch_encoder.decode(y_cipher_plain, y_plain_result);
 
     // Debug print statement
-    // cout << "x_plain: ";
-    // for (auto i = 0; i < 10; ++i)
-    // {
-    //     cout << x_plain_result[i] << " ";
-    // }
-    // cout << endl;
-    // cout << "y_plain: ";
-    // for (auto i = 0; i < 10; ++i)
-    // {
-    //     cout << y_plain_result[i] << " ";
-    // }
-    // cout << endl;
+    cout << "x_plain: ";
+    for (auto i = 0; i < 10; ++i)
+    {
+        cout << x_plain_result[i] << " ";
+    }
+    cout << endl;
+    cout << "y_plain: ";
+    for (auto i = 0; i < 10; ++i)
+    {
+        cout << y_plain_result[i] << " ";
+    }
+    cout << endl;
 
     // TODO: Calculate Coefficients a and b. Need to figure out how to sum up encrypted vector in SEAL.
     cout << "Compute x^2 and relinearize:" << endl;
@@ -172,18 +176,18 @@ int main()
     batch_encoder.decode(xy_cipher_plain, xy_cipher_result);
 
     // Debug print statement
-    // cout << "x_square_result: ";
-    // for (auto i = 0; i < 10; ++i)
-    // {
-    //     cout << x_square_result[i] << " ";
-    // }
-    // cout << endl;
-    // cout << "xy_cipher_result: ";
-    // for (auto i = 0; i < 10; ++i)
-    // {
-    //     cout << xy_cipher_result[i] << " ";
-    // }
-    // cout << endl;
+    cout << "x_square_result: ";
+    for (auto i = 0; i < 10; ++i)
+    {
+        cout << x_square_result[i] << " ";
+    }
+    cout << endl;
+    cout << "xy_cipher_result: ";
+    for (auto i = 0; i < 10; ++i)
+    {
+        cout << xy_cipher_result[i] << " ";
+    }
+    cout << endl;
 
     cout << "before rotating" << endl;
     vector<Ciphertext> rotations_output_x(size);
@@ -217,18 +221,18 @@ int main()
     batch_encoder.decode(sum_output_y_plain, sum_output_y_result);
 
     // Debug print statement
-    // cout << "sum_output_x_result: ";
-    // for (auto i = 0; i < 10; ++i)
-    // {
-    //     cout << sum_output_x_result[i] << " ";
-    // }
-    // cout << endl;
-    // cout << "sum_output_y_result: ";
-    // for (auto i = 0; i < 10; ++i)
-    // {
-    //     cout << sum_output_y_result[i] << " ";
-    // }
-    // cout << endl;
+    cout << "sum_output_x_result: ";
+    for (auto i = 0; i < 10; ++i)
+    {
+        cout << sum_output_x_result[i] << " ";
+    }
+    cout << endl;
+    cout << "sum_output_y_result: ";
+    for (auto i = 0; i < 10; ++i)
+    {
+        cout << sum_output_y_result[i] << " ";
+    }
+    cout << endl;
 
     Ciphertext sum_output_xy;
     evaluator.add_many(rotations_output_xy, sum_output_xy);
@@ -246,18 +250,18 @@ int main()
     batch_encoder.decode(sum_output_x2_plain, sum_output_x2_result);
 
     // Debug print statement
-    // cout << "sum_output_xy_result: ";
-    // for (auto i = 0; i < 10; ++i)
-    // {
-    //     cout << sum_output_xy_result[i] << " ";
-    // }
-    // cout << endl;
-    // cout << "sum_output_x2_result: ";
-    // for (auto i = 0; i < 10; ++i)
-    // {
-    //     cout << sum_output_x2_result[i] << " ";
-    // }
-    // cout << endl;
+    cout << "sum_output_xy_result: ";
+    for (auto i = 0; i < 10; ++i)
+    {
+        cout << sum_output_xy_result[i] << " ";
+    }
+    cout << endl;
+    cout << "sum_output_x2_result: ";
+    for (auto i = 0; i < 10; ++i)
+    {
+        cout << sum_output_x2_result[i] << " ";
+    }
+    cout << endl;
 
     Ciphertext sq_sum_output_x;
     evaluator.square(sum_output_x, sq_sum_output_x);
@@ -277,18 +281,18 @@ int main()
     batch_encoder.decode(sum_output_y_mod_plain, sum_output_y_mod_result);
 
     // Debug print statement
-    // cout << "sum_output_x_mod_result: ";
-    // for (auto i = 0; i < 10; ++i)
-    // {
-    //     cout << sum_output_x_mod_result[i] << " ";
-    // }
-    // cout << endl;
-    // cout << "sum_output_y_mod_result: ";
-    // for (auto i = 0; i < 10; ++i)
-    // {
-    //     cout << sum_output_y_mod_result[i] << " ";
-    // }
-    // cout << endl;
+    cout << "sum_output_x_mod_result: ";
+    for (auto i = 0; i < 10; ++i)
+    {
+        cout << sum_output_x_mod_result[i] << " ";
+    }
+    cout << endl;
+    cout << "sum_output_y_mod_result: ";
+    for (auto i = 0; i < 10; ++i)
+    {
+        cout << sum_output_y_mod_result[i] << " ";
+    }
+    cout << endl;
 
     cout << "multiply" << endl;
     Ciphertext mul_output_yx2;
@@ -317,24 +321,24 @@ int main()
     batch_encoder.decode(mul_output_xy_plain, mul_output_xy_result);
 
     // Debug print statement
-    // cout << "mul_output_yx2_result: ";
-    // for (auto i = 0; i < 10; ++i)
-    // {
-    //     cout << mul_output_yx2_result[i] << " ";
-    // }
-    // cout << endl;
-    // cout << "mul_output_xxy_result: ";
-    // for (auto i = 0; i < 10; ++i)
-    // {
-    //     cout << mul_output_xxy_result[i] << " ";
-    // }
-    // cout << endl;
-    // cout << "mul_output_xy_result: ";
-    // for (auto i = 0; i < 10; ++i)
-    // {
-    //     cout << mul_output_xy_result[i] << " ";
-    // }
-    // cout << endl;
+    cout << "mul_output_yx2_result: ";
+    for (auto i = 0; i < 10; ++i)
+    {
+        cout << mul_output_yx2_result[i] << " ";
+    }
+    cout << endl;
+    cout << "mul_output_xxy_result: ";
+    for (auto i = 0; i < 10; ++i)
+    {
+        cout << mul_output_xxy_result[i] << " ";
+    }
+    cout << endl;
+    cout << "mul_output_xy_result: ";
+    for (auto i = 0; i < 10; ++i)
+    {
+        cout << mul_output_xy_result[i] << " ";
+    }
+    cout << endl;
 
     Ciphertext len;
     Plaintext plain_len(uint64_to_hex_string(size));
@@ -362,24 +366,24 @@ int main()
     batch_encoder.decode(len_xy_plain, len_xy_result);
 
     // Debug print statement
-    // cout << "len_result: ";
-    // for (auto i = 0; i < 10; ++i)
-    // {
-    //     cout << len_result[i] << " ";
-    // }
-    // cout << endl;
-    // cout << "len_x2_result: ";
-    // for (auto i = 0; i < 10; ++i)
-    // {
-    //     cout << len_x2_result[i] << " ";
-    // }
-    // cout << endl;
-    // cout << "len_xy_result: ";
-    // for (auto i = 0; i < 10; ++i)
-    // {
-    //     cout << len_xy_result[i] << " ";
-    // }
-    // cout << endl;
+    cout << "len_result: ";
+    for (auto i = 0; i < 10; ++i)
+    {
+        cout << len_result[i] << " ";
+    }
+    cout << endl;
+    cout << "len_x2_result: ";
+    for (auto i = 0; i < 10; ++i)
+    {
+        cout << len_x2_result[i] << " ";
+    }
+    cout << endl;
+    cout << "len_xy_result: ";
+    for (auto i = 0; i < 10; ++i)
+    {
+        cout << len_xy_result[i] << " ";
+    }
+    cout << endl;
 
     Ciphertext a_top;
     Ciphertext b_top;
@@ -413,6 +417,11 @@ int main()
     double coefficient = (b_top_result[0] * 1.0) / (bot_result[0] * 1.0);
     cout << "intercept: " << intercept << endl;
     cout << "coefficient: " << coefficient << endl;
+    cout << "End time" << endl;
+    time_end = chrono::high_resolution_clock::now();
+
+    chrono::microseconds time_diff = chrono::duration_cast<chrono::microseconds>(time_end - time_start);
+    cout << "Done [" << time_diff.count() << " microseconds]" << endl;
 
     return 0;
 }
