@@ -11,9 +11,13 @@ To run the Microsoft SEAL BFV linear regression program:
 1. `cd seal-capstone`
 1. `cmake -S . -B build -DSEAL_BUILD_EXAMPLES=ON`
 1. `cmake --build build`
-1. `./build/bin/linear-regression`
+1. To run the programs:
+   - BFV: `./build/bin/linear-regression-bfv`
+   - CKKS: `./build/bin/linear-regression-ckks`
 
 To run an updated version the linear-regression with new changes:
 
 1. `cmake --build build`
-1. `./build/bin/linear-regression`
+1. To run the programs:
+   - BFV: `./build/bin/linear-regression-bfv`
+   - CKKS: `./build/bin/linear-regression-ckks`

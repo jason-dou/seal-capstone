@@ -3,9 +3,9 @@ from sklearn.linear_model import LinearRegression
 
 age = []
 income = []
-n = 15
-factor = 10000
-with open("/afs/andrew.cmu.edu/usr24/jiachend/public/cleaned_small_user_data.csv") as f:
+n = 4000
+factor = 1000
+with open("/afs/andrew.cmu.edu/usr24/jiachend/public/medium_dataset.csv") as f:
     line = f.readline()
     count = 0
     while count < n:
@@ -13,8 +13,8 @@ with open("/afs/andrew.cmu.edu/usr24/jiachend/public/cleaned_small_user_data.csv
         if len(line) <= 1:
             break
         line = line.split(',')
-        age.append(eval(line[2]))
-        income.append(eval(line[3])/factor)
+        age.append(eval(line[8]))
+        income.append(eval(line[9])/factor)
         count += 1
 
 n = len(age)

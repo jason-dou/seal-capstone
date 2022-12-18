@@ -7,7 +7,7 @@
 using namespace std;
 using namespace seal;
 
-#define MAX_ENTRY 4000
+#define MAX_ENTRY 10
 #define INC_FACTOR 1000
 
 const char *file_small = "/afs/andrew.cmu.edu/usr24/jiachend/public/medium_dataset.csv";

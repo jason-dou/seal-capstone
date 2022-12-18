@@ -16,26 +16,27 @@ if(NOT DEFINED SEAL_BUILD_EXAMPLES)
 endif()
 
 if(SEAL_BUILD_EXAMPLES)
-    add_executable(linear-regression)
+    add_executable(linear-regression-bfv)
+    add_executable(linear-regression-ckks)
 
-    target_sources(linear-regression
+    target_sources(linear-regression-bfv
         PRIVATE
             ${CMAKE_CURRENT_LIST_DIR}/examples.cpp
-            ${CMAKE_CURRENT_LIST_DIR}/1_bfv_basics.cpp
-            ${CMAKE_CURRENT_LIST_DIR}/2_encoders.cpp
-            ${CMAKE_CURRENT_LIST_DIR}/3_levels.cpp
-            ${CMAKE_CURRENT_LIST_DIR}/4_bgv_basics.cpp
-            ${CMAKE_CURRENT_LIST_DIR}/5_ckks_basics.cpp
-            ${CMAKE_CURRENT_LIST_DIR}/6_rotation.cpp
-            ${CMAKE_CURRENT_LIST_DIR}/7_serialization.cpp
-            ${CMAKE_CURRENT_LIST_DIR}/8_performance.cpp
-            ${CMAKE_CURRENT_LIST_DIR}/linear-regression.cpp
+            ${CMAKE_CURRENT_LIST_DIR}/linear-regression-bfv.cpp
+    )
+
+    target_sources(linear-regression-ckks
+        PRIVATE
+            ${CMAKE_CURRENT_LIST_DIR}/examples.cpp
+            ${CMAKE_CURRENT_LIST_DIR}/linear-regression-ckks.cpp
     )
 
     if(TARGET SEAL::seal)
-        target_link_libraries(linear-regression PRIVATE SEAL::seal)
+        target_link_libraries(linear-regression-bfv PRIVATE SEAL::seal)
+        target_link_libraries(linear-regression-ckks PRIVATE SEAL::seal)
     elseif(TARGET SEAL::seal_shared)
-        target_link_libraries(linear-regression PRIVATE SEAL::seal_shared)
+        target_link_libraries(linear-regression-bfv PRIVATE SEAL::seal_shared)
+        target_link_libraries(linear-regression-ckks PRIVATE SEAL::seal_shared)
     else()
         message(FATAL_ERROR "Cannot find target SEAL::seal or SEAL::seal_shared")
     endif()
